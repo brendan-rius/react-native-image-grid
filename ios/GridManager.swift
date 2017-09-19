@@ -48,7 +48,15 @@ class ColumnFlowLayout: UICollectionViewFlowLayout {
 }
 
 class GridView : UICollectionView {
+  var _urls: [String] = []
+  var onOrderChange: RCTDirectEventBlock = {_ in }
+  
   var isWiggling: Bool { return _isWiggling }
+  
+  @objc
+  public func setUrls(_ urls: NSArray) -> Void {
+    self._urls = urls as! [String]
+  }
   
   private var _isWiggling = false
   
@@ -104,7 +112,7 @@ class GridView : UICollectionView {
   
   private func bounceAnimation() -> CAKeyframeAnimation {
     let animation = CAKeyframeAnimation(keyPath: "transform.translation.y")
-    let bounce = CGFloat(3.0)
+    let bounce = CGFloat(2.0)
     let duration = TimeInterval(0.12)
     let variance = Double(0.025)
     animation.values = [bounce, -bounce]
@@ -122,7 +130,6 @@ class GridView : UICollectionView {
 }
 
 class GridViewController : UIViewController, UICollectionViewDelegate, UICollectionViewDataSource {
-  var items = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
   var collectionView: GridView? = nil;
   
   override func loadView() {
@@ -139,6 +146,8 @@ class GridViewController : UIViewController, UICollectionViewDelegate, UICollect
   
   override func viewDidLoad() {
     let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(self.handleLongGesture))
+    self.collectionView?.bounces = true
+    self.collectionView?.alwaysBounceVertical = true
     self.collectionView?.addGestureRecognizer(longPressGesture)
     self.collectionView!.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "collectionCell")
     
@@ -181,29 +190,41 @@ class GridViewController : UIViewController, UICollectionViewDelegate, UICollect
   }
   
   func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-    return items.count
+    return (self.collectionView?._urls.count)!
   }
   
   func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
     let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "collectionCell", for: indexPath)
-    cell.backgroundColor = UIColor.green
-    let btn = UIButton(frame: CGRect(x: 0, y: 0, width: 30, height: 30))
-    btn.backgroundColor = UIColor.gray
+    let btn = UIButton(frame: CGRect(x: cell.frame.width - 25, y: 5, width: 20, height: 20))
+
+    btn.setBackgroundImage(UIImage.init(named: "delete.png"), for: .normal)
     btn.addTarget(self, action: #selector(self.press), for: .touchUpInside)
+    
+    let imageView = UIImageView(frame: cell.bounds)
+    imageView.layer.cornerRadius = 4.0
+    imageView.layer.masksToBounds = true
+    cell.addSubview(imageView)
+    
     cell.addSubview(btn)
+    let url = self.collectionView?._urls[indexPath.item]
+    NSURLConnection.sendAsynchronousRequest(URLRequest(url: URL(string: url!)!), queue: OperationQueue.main) { (response, data, error) in
+      if let d = data{
+        imageView.image = UIImage(data: d)
+      }
+    }
     return cell
   }
   
   func press(sender: UIButton) {
     let indexPath = self.collectionView?.indexPathForItem(at: (self.collectionView?.convert(sender.center, from: sender.superview))!)
-    self.items.remove(at: (indexPath?.item)!)
+    self.collectionView?._urls.remove(at: (indexPath?.item)!)
     self.collectionView?.deleteItems(at: [indexPath!])
   }
   
-  func collectionView(_ collectionView: UICollectionView,
-                               moveItemAt sourceIndexPath: IndexPath,
-                               to destinationIndexPath: IndexPath) {
-    
+  func collectionView(_ collectionView: UICollectionView, moveItemAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
+    let item = self.collectionView?._urls.remove(at: sourceIndexPath.item)
+    self.collectionView?._urls.insert(item!, at: destinationIndexPath.item)
+    self.collectionView?.onOrderChange(["urls": self.collectionView?._urls])
   }
   
 }

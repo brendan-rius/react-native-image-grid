@@ -10,4 +10,8 @@
 #import <React/RCTViewManager.h>
 
 @interface RCT_EXTERN_MODULE(GridViewManager, RCTViewManager)
+
+RCT_EXPORT_VIEW_PROPERTY(urls, NSArray)
+RCT_EXPORT_VIEW_PROPERTY(onOrderChange, RCTDirectEventBlock)
+
 @end
